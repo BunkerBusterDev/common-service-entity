@@ -7,12 +7,16 @@ const { combine, colorize, label, timestamp, printf } = format;
 let logDirectory = __dirname + '/../logs/production';
 
 if (!fs.existsSync(logDirectory)) {
-    fs.mkdirSync(logDirectory);
+    fs.mkdirSync(logDirectory, { recursive: true });
 }
 
 const loggerBuffer: { [key: string]: Logger } = {};
 
-const getLogger = (moduleName: string, methodName?: string) => {
+declare global {
+    function getLogger(moduleName: string, methodName?: string): Logger;
+}
+
+global.getLogger = (moduleName: string, methodName?: string) => {
     let categoryName = moduleName;
     if (methodName) {
         categoryName = [moduleName, methodName].join('-');
@@ -22,7 +26,7 @@ const getLogger = (moduleName: string, methodName?: string) => {
     if (process.env.NODE_ENV === 'development') {
         logDirectory = __dirname + '/../logs/development';
         if (!fs.existsSync(logDirectory)) {
-            fs.mkdirSync(logDirectory);
+            fs.mkdirSync(logDirectory, { recursive: true });
         }
         level = 'debug';
     }
@@ -99,4 +103,4 @@ const httpLogStream = (logger: Logger) => {
     return result;
 };
 
-export { getLogger, httpLogStream };
+export { httpLogStream };
