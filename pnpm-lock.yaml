@@ -26,6 +26,9 @@ dependencies:
   koa-morgan:
     specifier: ^1.0.1
     version: 1.0.1
+  moment-timezone:
+    specifier: ^0.5.43
+    version: 0.5.43
   mongoose:
     specifier: ^7.5.1
     version: 7.5.1
@@ -2111,6 +2114,12 @@ packages:
     resolution: {integrity: sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==}
     engines: {node: '>=10'}
     hasBin: true
+    dev: false
+
+  /moment-timezone@0.5.43:
+    resolution: {integrity: sha512-72j3aNyuIsDxdF1i7CEgV2FfxM1r6aaqJyLB2vwb33mXYyoyLly+F1zbWqhA3/bVIoJ4szlUoMbUnVdid32NUQ==}
+    dependencies:
+      moment: 2.29.4
     dev: false
 
   /moment@2.29.4:
