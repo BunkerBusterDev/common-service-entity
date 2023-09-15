@@ -1,77 +1,83 @@
 import os from 'os';
 import cluster from 'cluster';
+import moment from 'moment-timezone';
 
-import DB from 'db';
-import CB from 'core/cb';
+import Database from 'database';
+import CSEBase from 'core/cseBase';
 import Server from 'core/server';
+import lookupModel from 'database/models/lookup';
+import * as WatchdogTimer from 'lib/watchdogTimer';
 
 const cpuCount = os.cpus().length;
 const worker = [];
 const useClustering = false;
+moment().tz('Asia/Seoul');
 
 const server: Server = new Server();
-const db: DB = new DB();
-const cb: CB = new CB();
+const database: Database = new Database();
+const cseBase: CSEBase = new CSEBase();
 
-if (useClustering) {
-    if (cluster.isPrimary) {
-        const logger = global.getLogger('App', 'ClusteringPrimary');
-        cluster.on('death', (worker) => {
-            logger.info(`worker${worker.pid} died --> start again`);
-        });
-
-        db.connect()
-            .then(({ code, connection }) => {
-                if (code === '200') {
-                    logger.info(`CPU Count = ${cpuCount}`);
-                    for (let i = 0; i < cpuCount; i++) {
-                        worker[i] = cluster.fork();
-                    }
-                    cb.create(connection);
-                }
-            })
-            .catch((error) => {
-                logger.error(error);
-            });
-    } else {
-        const logger = global.getLogger('App', 'ClusteringWorker');
-        db.connect(cluster.worker?.id)
-            .then(({ code, connection }) => {
-                if (code === '200') {
-                    server
-                        .listen(cluster.worker?.id)
-                        .then((code) => {
-                            if (code === '200') {
-                                cb.create(connection);
-                            }
-                        })
-                        .catch((error) => {
-                            logger.error(error);
-                        });
-                }
-            })
-            .catch((error) => {
-                logger.error(error);
-            });
+const deleteRequestResource = async () => {
+    const logger = global.getLogger('App', 'deleteRequestResource');
+    try {
+        const result = await lookupModel.deleteRequest();
+        logger.info(`${result.deletedCount} requested resource(s) deleted`);
+    } catch (error) {
+        logger.error(error);
     }
-} else {
-    const logger = global.getLogger('App', 'Primary');
-    db.connect()
-        .then(({ code, connection }) => {
-            if (code === '200') {
-                server
-                    .listen()
-                    .then((code) => {
-                        if (code === '200') {
-                            cb.create(connection);
-                        }
-                    })
-                    .catch((error) => {
-                        logger.error(error);
-                    });
+};
+
+const deleteExpiredResource = async () => {
+    const logger = global.getLogger('App', 'deleteExpiredResource');
+    try {
+        const expirationTime = moment().add(11, 'years').format('YYYY-MM-DDTHH:mm:ss');
+        const result = await lookupModel.deleteExpiredLookup(expirationTime);
+        logger.info(`${result.deletedCount} expired resource(s) deleted`);
+    } catch (error) {
+        logger.error(error);
+    }
+};
+
+const initialize = async () => {
+    if (useClustering) {
+        if (cluster.isPrimary) {
+            const logger = global.getLogger('App', 'clusteringPrimary');
+            cluster.on('death', (worker) => {
+                logger.error(`worker${worker.pid} died --> start again`);
+            });
+
+            const result = await database.connect();
+            if (result) {
+                logger.info(`CPU Count = ${cpuCount}`);
+                for (let i = 0; i < cpuCount; i++) {
+                    worker[i] = cluster.fork();
+                }
+                await cseBase.create();
+
+                WatchdogTimer.setWatchdogTimer('deleteRequestResource', 24 * 60 * 60, deleteRequestResource);
+                WatchdogTimer.setWatchdogTimer('deleteExpiredResource', 24 * 60 * 60, deleteExpiredResource);
             }
-        })
-        .catch((error) => {
-            logger.error(error);
-        });
-}
+        } else {
+            const result = await database.connect(cluster.worker?.id);
+            if (result) {
+                const code = await server.listen(cluster.worker?.id);
+                if (code === '200') {
+                    await cseBase.create();
+                }
+            }
+        }
+    } else {
+        const resultConnectDB = await database.connect();
+        if (resultConnectDB) {
+            const response = await server.listen();
+            if (response === '200') {
+                await cseBase.create();
+
+                WatchdogTimer.setWatchdogTimer('deleteRequestResource', 24 * 60 * 60, deleteRequestResource);
+                WatchdogTimer.setWatchdogTimer('deleteExpiredResource', 24 * 60 * 60, deleteExpiredResource);
+            }
+        }
+    }
+};
+
+initialize();
