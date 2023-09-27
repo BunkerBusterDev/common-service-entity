@@ -56,8 +56,9 @@ const getCSE = async (ctx: Koa.DefaultContext, next: Koa.Next) => {
     }
 };
 
-const getTest = (ctx: Koa.DefaultContext) => {
-    ctx.body = 'hello';
+const getTest = (ctx: Koa.DefaultContext, next: Koa.Next) => {
+    console.log(ctx.request);
+    return next();
 };
 
 export = { getCSE, getTest };
