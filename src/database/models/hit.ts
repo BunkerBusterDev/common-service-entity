@@ -2,28 +2,41 @@ import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
-const hitSchema = new Schema({
-    creationTime: {
-        type: String,
-        required: true,
-        unique: true,
+const hitSchema = new Schema(
+    {
+        ct: {
+            type: Date,
+            required: true,
+            unique: true,
+        },
+        http: {
+            type: Number,
+            default: 1,
+        },
+        mqtt: {
+            type: Number,
+            default: 1,
+        },
+        coap: {
+            type: Number,
+            default: 1,
+        },
+        ws: {
+            type: Number,
+            default: 1,
+        },
     },
-    http: {
-        type: Number,
-        default: null,
+    {
+        collection: 'hit',
+        statics: {
+            getHitAll(until: string) {
+                return this.find(
+                    { ct: { $gt: new Date(until) } },
+                    { _id: false, ct: true, http: true, mqtt: true, coap: true, ws: true },
+                );
+            },
+        },
     },
-    mqtt: {
-        type: Number,
-        default: null,
-    },
-    coap: {
-        type: Number,
-        default: null,
-    },
-    ws: {
-        type: Number,
-        default: null,
-    },
-});
+);
 
-export = mongoose.model('Hit', hitSchema);
+export = mongoose.model('hit', hitSchema);

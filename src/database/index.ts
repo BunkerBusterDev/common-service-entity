@@ -7,13 +7,14 @@ export default class Server {
     private dbPw!: string;
 
     constructor() {
-        this.dbId = config.dbInfo.useDbId;
-        this.dbPw = config.dbInfo.useDbPass;
+        this.dbId = config.dbInfo.useDBID;
+        this.dbPw = config.dbInfo.useDBPW;
         mongoose.Schema.Types.String.checkRequired((v) => v !== null);
     }
 
     public async connect(clusterId?: number) {
-        const logger = global.getLogger('DB', 'connect');
+        const logger = global.getLogger();
+        const logCategory = global.getLogCategory('DB', 'connect');
         try {
             await mongoose.connect('mongodb://127.0.0.1:27017', {
                 user: this.dbId,
@@ -23,14 +24,14 @@ export default class Server {
                 dbName: 'experiment',
             });
             if (clusterId) {
-                logger.info(`MongoDB connected by Worker[${clusterId}]`);
+                logger.info(`${logCategory}MongoDB connected by Worker[${clusterId}]`);
             } else {
-                logger.info(`MongoDB connected by Primary`);
+                logger.info(`${logCategory}MongoDB connected by Primary`);
             }
 
             return true;
         } catch (error) {
-            logger.error(error);
+            logger.error(logCategory + error);
             return false;
         }
     }

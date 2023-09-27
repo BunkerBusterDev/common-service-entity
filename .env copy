@@ -1,3 +1,2 @@
-PORT = HTTP PORT
 USE_DB_ID = 'db id'
 USE_DB_PASS = 'db pass'

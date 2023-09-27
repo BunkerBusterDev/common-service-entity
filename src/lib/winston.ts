@@ -13,13 +13,18 @@ if (!fs.existsSync(logDirectory)) {
 const loggerBuffer: { [key: string]: Logger } = {};
 
 declare global {
-    function getLogger(moduleName: string, methodName?: string): Logger;
+    function getLogger(moduleName?: string, methodName?: string): Logger;
+    function getLogCategory(moduleName: string, methodName?: string): string;
 }
 
-global.getLogger = (moduleName: string, methodName?: string) => {
-    let categoryName = moduleName;
-    if (methodName) {
-        categoryName = [moduleName, methodName].join('-');
+global.getLogger = (moduleName?: string, methodName?: string) => {
+    let categoryName = '';
+    if (moduleName) {
+        if (methodName) {
+            categoryName = `[${[moduleName, methodName].join('-')}]: `;
+        } else {
+            categoryName = `[${moduleName}]: `;
+        }
     }
 
     let level = 'info';
@@ -31,13 +36,53 @@ global.getLogger = (moduleName: string, methodName?: string) => {
         level = 'debug';
     }
 
-    if (!loggerBuffer[categoryName]) {
-        loggerBuffer[categoryName] = createLogger({
+    if (categoryName !== undefined) {
+        if (!loggerBuffer[categoryName]) {
+            loggerBuffer[categoryName] = createLogger({
+                format: combine(
+                    colorize({ level: true }),
+                    label({ label: categoryName }),
+                    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+                    printf((info) => `${info.timestamp} - (${info.level})${info.label}${info.message}`),
+                ),
+                transports: [
+                    new transports.Console({ level: level }),
+                    new winstonDaily({
+                        level: level,
+                        datePattern: 'YYYY-MM-DD',
+                        dirname: logDirectory,
+                        filename: '%DATE%.log',
+                        maxFiles: 30,
+                        zippedArchive: true,
+                    }),
+                    new winstonDaily({
+                        level: 'error',
+                        datePattern: 'YYYY-MM-DD',
+                        dirname: `${logDirectory}/error`,
+                        filename: '%DATE%.error.log',
+                        maxFiles: 30,
+                        zippedArchive: true,
+                    }),
+                ],
+                exceptionHandlers: [
+                    new winstonDaily({
+                        level: 'error',
+                        datePattern: 'YYYY-MM-DD',
+                        dirname: `${logDirectory}`,
+                        filename: '%DATE%.exception.log',
+                        maxFiles: 30,
+                        zippedArchive: true,
+                    }),
+                ],
+            });
+        }
+        return loggerBuffer[categoryName];
+    } else {
+        loggerBuffer['app'] = createLogger({
             format: combine(
                 colorize({ level: true }),
-                label({ label: categoryName }),
                 timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-                printf((info) => `${info.timestamp} - (${info.level})[${info.label}]: ${info.message}`),
+                printf((info) => `${info.timestamp} - (${info.level})${info.label}${info.message}`),
             ),
             transports: [
                 new transports.Console({ level: level }),
@@ -58,7 +103,6 @@ global.getLogger = (moduleName: string, methodName?: string) => {
                     zippedArchive: true,
                 }),
             ],
-
             exceptionHandlers: [
                 new winstonDaily({
                     level: 'error',
@@ -70,27 +114,17 @@ global.getLogger = (moduleName: string, methodName?: string) => {
                 }),
             ],
         });
+        return loggerBuffer['app'];
+    }
+};
 
-        // loggerBuffer[categoryName] = loggers.add(categoryName, {
-        //     format: combine(
-        //         colorize({ level: true }),
-        //         label({ label: categoryName }),
-        //         timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        //         printf((info) => `${info.timestamp} - (${info.level})[${info.label}]: ${info.message}`),
-        //     ),
-        //     transports: [
-        //         new transports.Console({ level: 'info' }),
-        //         new transports.File({
-        //             level: 'debug',
-        //             filename: 'debug.log',
-        //             dirname: logDirectory,
-        //         }),
-        //     ],
-        // });
+global.getLogCategory = (moduleName: string, methodName?: string) => {
+    let categoryName = moduleName;
+    if (methodName) {
+        categoryName = `[${[moduleName, methodName].join('-')}]: `;
     }
 
-    // return loggers.get(categoryName);
-    return loggerBuffer[categoryName];
+    return categoryName;
 };
 
 const httpLogStream = (logger: Logger) => {

@@ -4,129 +4,168 @@ const { Schema } = mongoose;
 
 const lookupSchema = new Schema(
     {
-        // 부모 resourceID
-        parentID: {
+        // 부모 ri
+        pi: {
             type: String,
             required: true,
         },
         // 개별 리소스의 고유 식별자
-        resourceID: {
+        ri: {
             type: String,
             required: true,
             unique: true,
         },
         // 개별 리소스의 유형을 나타냄 (2: applicationEntity, 3: container, 4: contentInstance, 5: commonServiceEntity)
-        resourceType: {
+        ty: {
             type: Number,
             required: true,
         },
         // 리소스가 생성된 시간
-        creationTime: {
+        ct: {
             type: Date,
             required: true,
         },
         // 리소스의 상태를 나타내는 태그로 수정시 마다 1씩 증가
-        stateTag: {
+        st: {
             type: Number,
             required: true,
         },
         // 리소스의 이름을 나타냄
-        resourceName: {
+        rn: {
             type: String,
             required: true,
         },
         // 리소스가 마지막으로 수정된 시간
-        lastModifiedTime: {
+        lt: {
             type: Date,
             required: true,
         },
         // 리소스가 만료되는 시간
-        expirationTime: {
+        et: {
             type: Date,
             required: true,
         },
         // 리소스에 대한 접근 제어 정책의 ID 리스트
-        accessControlPolicyIDs: {
+        acpi: {
             type: String,
             required: true,
         },
         // 리소스를 분류하거나 검색하기 위해 사용되는 태그 또는 라벨 리스트
-        labels: {
+        lbl: {
             type: String,
             required: true,
         },
         // 리소스가 발표될 대상을 나타냄
-        announceTo: {
+        at: {
             type: String,
             required: true,
         },
         // 리소스가 발표된 속성을 나타냄
-        announcedAttribute: {
+        aa: {
             type: String,
             required: true,
         },
-        // 효율적 참조를 위한 짧은 resourceID
-        shortResourceID: {
+        // 효율적 참조를 위한 짧은 ri
+        sri: {
             type: String,
             required: true,
         },
-        // 효율적 참조를 위한 짧은 parentID
-        shortParentID: {
+        // 효율적 참조를 위한 짧은 pi
+        spi: {
             type: String,
             required: true,
         },
         // 이 리소스의 subscription에 대한 리스트
-        subscribedResourceList: {
+        subl: {
             type: String,
             required: false,
         },
     },
     {
+        collection: 'lookup',
         statics: {
-            findIsExistByResourceID(resourceID: string) {
-                return this.findOne({ resourceID: resourceID }, { _id: false, resourceID: true });
+            findIsExistByresourceID(ri: string) {
+                return this.findOne({ ri: ri }, { _id: false, ri: true });
+            },
+            async findByResourceIDinLookupOrShortResourceID(ri: string, sri: string) {
+                const pipeline = [
+                    {
+                        $lookup: {
+                            from: 'shortResourceID', // This should match the actual name of the sri collection in your database.
+                            let: { lookup_ri: '$ri' },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: {
+                                            $or: [
+                                                { $eq: ['$$lookup_ri', ri] },
+                                                {
+                                                    $and: [
+                                                        { $eq: ['$shortResourceID', sri] },
+                                                        { $eq: ['$$lookup_ri', '$ri'] },
+                                                    ],
+                                                },
+                                            ],
+                                        },
+                                    },
+                                },
+                            ],
+                            as: 'joinedDocs',
+                        },
+                    },
+                    {
+                        $match: { joinedDocs: { $ne: [] } },
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            __v: 0,
+                            joinedDocs: 0, // joinedDocs 필드 제거
+                        },
+                    },
+                ];
+
+                const results = await this.aggregate(pipeline);
+                return results;
             },
             insertLookup(resourceObject) {
                 const lookup = new this({
-                    parentID: resourceObject.parentID,
-                    resourceID: resourceObject.resourceID,
-                    resourceType: resourceObject.resourceType,
-                    creationTime: new Date(resourceObject.creationTime),
-                    stateTag: resourceObject.stateTag,
-                    resourceName: resourceObject.resourceName,
-                    lastModifiedTime: resourceObject.lastModifiedTime,
-                    expirationTime: new Date(resourceObject.expirationTime),
-                    accessControlPolicyIDs: JSON.stringify(resourceObject.accessControlPolicyIDs),
-                    labels: JSON.stringify(resourceObject.labels),
-                    announceTo: JSON.stringify(resourceObject.announceTo),
-                    announcedAttribute: JSON.stringify(resourceObject.announcedAttribute),
-                    shortResourceID: resourceObject.shortResourceID,
-                    shortParentID: resourceObject.shortParentID,
-                    subscribedResourceList: JSON.stringify(resourceObject.subscribedResourceList),
+                    pi: resourceObject.pi,
+                    ri: resourceObject.ri,
+                    ty: resourceObject.ty,
+                    ct: new Date(resourceObject.ct),
+                    st: resourceObject.st,
+                    rn: resourceObject.rn,
+                    lt: resourceObject.lt,
+                    et: new Date(resourceObject.et),
+                    acpi: JSON.stringify(resourceObject.acpi),
+                    lbl: JSON.stringify(resourceObject.lbl),
+                    at: JSON.stringify(resourceObject.at),
+                    aa: JSON.stringify(resourceObject.aa),
+                    sri: resourceObject.sri,
+                    spi: resourceObject.spi,
+                    subl: JSON.stringify(resourceObject.subl),
                 });
 
                 return lookup.save();
             },
-            deleteLookupByResourceID(resourceID: string) {
-                return this.deleteMany({ resourceID: resourceID });
+            deleteLookupByResourceID(ri: string) {
+                return this.deleteMany({ ri: ri });
             },
-            deleteExpiredLookup(expirationTime: string) {
+            deleteExpiredLookup(et: string) {
                 return this.deleteMany({
-                    expirationTime: { $lt: new Date(expirationTime) },
-                    resourceType: { $nin: [2, 3, 5] },
+                    et: { $lt: new Date(et) },
+                    ty: { $nin: [2, 3, 5] },
                 });
             },
             deleteRequest() {
-                return this.deleteMany({ resourceType: '17' });
+                return this.deleteMany({ ty: '17' });
             },
         },
     },
 );
 
-lookupSchema.index({ resourceType: 1 }, { name: 'idx_lookup_resourceType' });
-lookupSchema.index(
-    { parentID: 1, creationTime: 1, stateTag: 1 },
-    { name: 'idx_lookup_parentID_creationTime_stateTag' },
-);
+lookupSchema.index({ ty: 1 }, { name: 'idx_lookup_ty' });
+lookupSchema.index({ pi: 1, ct: 1, st: 1 }, { name: 'idx_lookup_pi_ct_st' });
 
-export = mongoose.model('Lookup', lookupSchema);
+export = mongoose.model('lookup', lookupSchema);
