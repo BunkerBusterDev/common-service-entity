@@ -5,14 +5,14 @@ const { Schema } = mongoose;
 const shortResourceIDSchema = new Schema(
     {
         // 개별 리소스의 고유 식별자
-        resourceID: {
+        ri: {
             type: String,
             required: true,
             unique: true,
             index: true,
         },
-        // 효율적 참조를 위한 짧은 resourceID
-        shortResourceID: {
+        // 효율적 참조를 위한 짧은 ri
+        sri: {
             type: String,
             required: true,
             index: true,
@@ -21,24 +21,24 @@ const shortResourceIDSchema = new Schema(
     {
         collection: 'shortResourceID',
         timestamps: true,
-        index: { fields: { resourceID: 1, shortResourceID: 1 }, unique: true },
+        index: { fields: { ri: 1, sri: 1 }, unique: true },
         statics: {
-            findShortResourceIDByParentID(parentID: string) {
-                return this.findOne({ resourceID: parentID }, { _id: false, shortResourceID: true });
+            findShortResourceIDByParentID(pi: string) {
+                return this.findOne({ ri: pi }, { _id: false, sri: true });
             },
             insertShortResourceID(resourceObject) {
                 const shortResourceID = new this({
-                    resourceID: resourceObject.resourceID,
-                    shortResourceID: resourceObject.shortResourceID,
+                    ri: resourceObject.ri,
+                    sri: resourceObject.sri,
                 });
 
                 return shortResourceID.save();
             },
-            deleteShortResourceID(resourceID: string) {
-                return this.deleteOne({ resourceID: resourceID });
+            deleteShortResourceID(ri: string) {
+                return this.deleteOne({ ri: ri });
             },
         },
     },
 );
 
-export = mongoose.model('ShortResourceID', shortResourceIDSchema);
+export = mongoose.model('shortResourceIDs', shortResourceIDSchema);
