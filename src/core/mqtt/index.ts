@@ -20,6 +20,7 @@ export default class mqttServer {
         // this.cacheTTL = 3; // count
         this.port = config.proxyInfo.useProxyMqttPort === undefined ? '1883' : config.proxyInfo.useProxyMqttPort;
         this.mqttApp = new koa();
+        console.log('test');
         // this.httpResponseQueue = {};
         // this.messageCache = {};
         // this.responseMqttRequestIdentifieriArray = [];
