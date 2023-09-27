@@ -59,6 +59,14 @@ const crossOriginResourceSharing = (ctx: koa.DefaultContext, next: koa.Next) => 
 const checkBind = async (ctx: koa.DefaultContext, next: koa.Next) => {
     if (ctx.request.headers.binding === undefined) {
         ctx.request.headers.binding = 'http';
+    } else if (ctx.request.headers.binding === 'H') {
+        ctx.request.headers.binding = 'http';
+    } else if (ctx.request.headers.binding === 'M') {
+        ctx.request.headers.binding = 'mqtt';
+    } else if (ctx.request.headers.binding === 'C') {
+        ctx.request.headers.binding = 'coap';
+    } else if (ctx.request.headers.binding === 'W') {
+        ctx.request.headers.binding = 'ws';
     }
 
     try {
@@ -253,6 +261,10 @@ const checkResponseType = (ctx: koa.DefaultContext) => {
     });
 };
 
+const lookupCreate = (ctx: koa.DefaultContext) => {
+    console.log('asdfasdfasdfasdf' + ctx.request);
+};
+
 const lookupRetrieve = async (ctx: koa.DefaultContext) => {
     const code = await checkResponseType(ctx);
     if (code === 200) {
@@ -281,4 +293,13 @@ const lookupRetrieve = async (ctx: koa.DefaultContext) => {
     }
 };
 
-export = { morgan, bodyParser, crossOriginResourceSharing, checkBind, checkXm2mHeaders, getTarget, lookupRetrieve };
+export = {
+    morgan,
+    bodyParser,
+    crossOriginResourceSharing,
+    checkBind,
+    checkXm2mHeaders,
+    getTarget,
+    lookupCreate,
+    lookupRetrieve,
+};

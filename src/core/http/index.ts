@@ -8,49 +8,40 @@ import api from 'api';
 import getHitAll from 'api/getHitAll';
 import middlewares from './middlewares';
 
-export default class httpServer {
-    private httpApp: koa;
-    private port: string;
-    private router;
+const httpApp = new koa();
+const port = config.cseInfo.useCSEBasePort === undefined ? '7579' : config.cseInfo.useCSEBasePort;
+const router = new koaRouter();
 
-    constructor() {
-        this.port = config.cseInfo.useCSEBasePort === undefined ? '7579' : config.cseInfo.useCSEBasePort;
+httpApp.use(middlewares.morgan);
+httpApp.use(middlewares.bodyParser);
+httpApp.use(middlewares.crossOriginResourceSharing);
+httpApp.use(middlewares.checkBind);
+httpApp.use(middlewares.checkXm2mHeaders);
+httpApp.use(middlewares.getTarget);
 
-        this.httpApp = new koa();
+router.get('/hit', getHitAll);
+router.use(`/:cseName`, api.routes());
+httpApp.use(router.routes());
 
-        this.httpApp.use(middlewares.morgan);
-        this.httpApp.use(middlewares.bodyParser);
-        this.httpApp.use(middlewares.crossOriginResourceSharing);
-        this.httpApp.use(middlewares.checkBind);
-        this.httpApp.use(middlewares.checkXm2mHeaders);
-        this.httpApp.use(middlewares.getTarget);
+const startServer = (clusterId?: number) => {
+    return new Promise((resolve) => {
+        const logger = global.getLogger();
+        const logCategory = global.getLogCategory('httpServer', 'listen');
 
-        this.router = new koaRouter();
+        try {
+            http.globalAgent.maxSockets = 1000000;
+            http.createServer(httpApp.callback()).listen({ port: port, agent: false }, () => {
+                if (clusterId) {
+                    logger.info(`${logCategory}CSE server running at ${port} by Worker[${clusterId}]`);
+                } else {
+                    logger.info(`${logCategory}CSE server running at ${port} by Primary`);
+                }
+                resolve('200');
+            });
+        } catch (error) {
+            logger.error(logCategory + error);
+        }
+    });
+};
 
-        this.router.get('/hit', getHitAll);
-        this.router.use(`/:cseName`, api.routes());
-        this.httpApp.use(this.router.routes());
-    }
-
-    public listen(clusterId?: number) {
-        return new Promise((resolve) => {
-            const { httpApp, port } = this;
-            const logger = global.getLogger();
-            const logCategory = global.getLogCategory('httpServer', 'listen');
-
-            try {
-                http.globalAgent.maxSockets = 1000000;
-                http.createServer(httpApp.callback()).listen({ port: port, agent: false }, () => {
-                    if (clusterId) {
-                        logger.info(`${logCategory}CSE server running at ${port} by Worker[${clusterId}]`);
-                    } else {
-                        logger.info(`${logCategory}CSE server running at ${port} by Primary`);
-                    }
-                    resolve('200');
-                });
-            } catch (error) {
-                logger.error(logCategory + error);
-            }
-        });
-    }
-}
+export = { startServer };
