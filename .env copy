@@ -1,2 +1,2 @@
-USE_DB_ID = 'db id'
-USE_DB_PASS = 'db pass'
+DB_ID = 'db id'
+DB_PW = 'db pass'

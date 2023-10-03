@@ -257,12 +257,51 @@ const checkResponseType = (ctx: koa.DefaultContext) => {
         if (ctx.request.query.responseType === 3) {
             // default, blocking
             resolve(200);
+        } else if (ctx.request.query.rt === 1 || ctx.request.query.rt === 2) { // nonblocking
+            if (ctx.request.query.rt === 2 && ctx.request.headers['x-m2m-rtu'] === null && ctx.request.headers['x-m2m-rtu'] === '') {
+                resolve(400);
+            }
+            else {
+                // first create ctx.request resource under CSEBase
+                var tempRootName = ctx.request.headers.rootName;
+                var tempBodyObject = JSON.parse(JSON.stringify(ctx.request.bodyObject));
+                var tempResourceType = ctx.request.ty;
+    
+    
+                ctx.request.ty = '17';
+                var rtBodyObject = {req: {}};
+                ctx.request.headers.rootName = 'req';
+                ctx.request.bodyObject = rtBodyObject;
+                ctx.request.query.rt = 3;
+    
+                const code = await resource.create(ctx.request);
+                    if(code === 200) {
+                        ctx.request.ty = tempResourceType;
+                        ctx.request.headers.rootName = tempRootName;
+                        ctx.request.bodyObject = tempBodyObject;
+                        ctx.request.query.rt = 1;
+                        resolve(code);
+                    }
+                    else {
+                        resolve(code);
+                    }
+            }
+        }
+        else {
+            resolve(405);
         }
     });
 };
 
-const lookupCreate = (ctx: koa.DefaultContext) => {
-    console.log('asdfasdfasdfasdf' + ctx.request);
+const lookupCreate = async (ctx: koa.DefaultContext) => {
+    const logger = global.getLogger();
+    const logCategory = global.getLogCategory('cseControl', 'lookupCreate');
+    logger.debug(logCategory + ctx.request);
+
+    const code = await checkResponseType(ctx);
+    if (code === 200) {
+
+    }
 };
 
 const lookupRetrieve = async (ctx: koa.DefaultContext) => {

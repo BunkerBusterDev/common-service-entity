@@ -56,9 +56,11 @@ const getCSE = async (ctx: Koa.DefaultContext, next: Koa.Next) => {
     }
 };
 
-const getTest = (ctx: Koa.DefaultContext, next: Koa.Next) => {
-    console.log(ctx.request);
+const createAE = (ctx: Koa.DefaultContext, next: Koa.Next) => {
+    const logger = global.getLogger();
+    const logCategory = global.getLogCategory('cseControl', 'createAE');
+    logger.debug(logCategory + ctx.request);
     return next();
 };
 
-export = { getCSE, getTest };
+export = { getCSE, createAE };
